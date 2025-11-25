@@ -5,35 +5,24 @@ body {
     min-height: 100vh;
     margin: 0;
     background-color: #333; /* Dark background */
-    font-family: Arial, sans-serif;
+    font-family: 'Inter', Arial, sans-serif;
     color: #fff;
 }
 
 #game-container {
+    /* Limit the maximum size for very large screens */
+    max-width: 800px; 
+    width: 90vw; /* Take 90% of the viewport width */
+    aspect-ratio: 2 / 1; /* Maintain 2:1 ratio (like 800x400) */
     border: 5px solid #000;
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.6);
 }
 
 #gameCanvas {
-    /* The size is set in the HTML attribute, but this ensures it's a block element */
     display: block;
+    width: 100%;
+    height: 100%;
     background-color: #6a95e5; /* Sky blue background for the game */
-}
-
-/* Styling for the menu elements drawn on the canvas */
-.menu-button {
-    padding: 10px 20px;
-    margin: 10px;
-    font-size: 20px;
-    cursor: pointer;
-    background-color: #4CAF50; /* Green */
-    color: white;
-    border: none;
-    border-radius: 5px;
-    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5);
-    transition: background-color 0.2s;
-}
-
-.menu-button:hover {
-    background-color: #45a049;
 }
