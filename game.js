@@ -5,9 +5,8 @@ const ctx = canvas.getContext('2d');
 const GAME_TITLE = 'JumperJonesy';
 
 // --- GAME STATE VARIABLES ---
-// Possible states: 'MENU', 'LEVEL_SELECT', 'LEVEL', 'INFINITE', 'GAME_OVER', 'LEVEL_COMPLETE'
-let gameState = 'MENU'; 
-let previousGameState = 'INFINITE'; // Stores state before game over (to know what to retry)
+let gameState = 'MENU';
+let previousGameState = 'INFINITE';
 let currentLevel = 1;
 let score = 0;
 let lastTime = 0;
@@ -18,56 +17,56 @@ let groundHeight = 10;
 
 // --- PLAYER SPRITE SETUP ---
 const playerImg = new Image();
-// IMPORTANT: Link to your uploaded image file
-playerImg.src = 'Mr Jones.png'; 
+playerImg.src = 'Mr Jones.png';
 
 // --- GAME OBJECTS ---
 const player = {
-    x: 0, 
+    x: 0,
     y: 0,
-    width: 0, // Set dynamically in resizeCanvas()
-    height: 0, // Set dynamically in resizeCanvas()
+    width: 0,
+    height: 0,
     velocityY: 0,
     gravity: 1.5,
-    jumpStrength: -28, 
+    jumpStrength: -28,
     isGrounded: true,
-    
+
     // Hitbox Adjustments to fit the visual sprite better
-    hitboxOffsetX: 0.12,      // Start hitbox ~12% from the left of the sprite
-    hitboxOffsetY: 0.18,      // Start hitbox ~18% from the top of the sprite
-    hitboxWidthScale: 0.76,   // Hitbox is 76% of the sprite width
-    hitboxHeightScale: 0.68   // Hitbox is 68% of the sprite height
+    hitboxOffsetX: 0.12,
+    hitboxOffsetY: 0.18,
+    hitboxWidthScale: 0.76,
+    hitboxHeightScale: 0.68,
+
+    // Terminal velocity to prevent extremely fast fall
+    terminalVelocity: 2000
 };
 
-// Define menu buttons, positions are dynamically calculated in updateMenuButtonPositions()
 const menuButtons = {};
-
-// --- GAME FUNCTIONS ---
 
 /**
  * Handles canvas resizing and position updates for responsiveness.
  */
 function resizeCanvas() {
-    // Set canvas dimensions based on the container size defined in CSS
     canvas.width = canvas.offsetWidth;
     canvas.height = canvas.offsetHeight;
-    
-    // Compute a responsive ground height (bigger on larger screens, but not tiny)
-    groundHeight = Math.max(18, canvas.height * 0.06); // at least 18px, otherwise 6% of height
 
-    // Set player size relative to canvas height (use more of the vertical space)
-    // Increased from 8% to ~15% to make the sprite much larger on-screen
-    player.height = canvas.height * 0.15; 
-    player.width = player.height; // Keep it square
+    // Responsive ground height (use more vertical space)
+    groundHeight = Math.max(18, canvas.height * 0.06);
 
-    // Recompute physics so jump and gravity scale comfortably with sprite size
-    player.jumpStrength = -player.height * 1.1;
-    player.gravity = player.height * 0.065;
-    
-    // Update player position based on new canvas size (place it standing on the ground)
-    player.x = canvas.width * 0.05; // 5% from left
-    player.y = canvas.height - player.height - groundHeight; 
-    
+    // Player size relative to canvas height (kept larger)
+    player.height = canvas.height * 0.15; // ~15% of screen height
+    player.width = player.height;
+
+    // --- Physics tuning that scales with size but cannot launch off-screen ---
+    // We choose a gentler jump relative to player height and a gravity proportional
+    // to player height. We'll also set a terminal velocity and ensure a ceiling clamp.
+    player.jumpStrength = -player.height * 0.95;   // controlled jump (reduced)
+    player.gravity = player.height * 0.14;         // stronger gravity to shorten arc
+    player.terminalVelocity = Math.max(player.height * 8, canvas.height * 2.5);
+
+    // Position player on ground
+    player.x = canvas.width * 0.05;
+    player.y = canvas.height - player.height - groundHeight;
+
     updateMenuButtonPositions();
 }
 
@@ -78,28 +77,20 @@ function updateMenuButtonPositions() {
     const W = canvas.width;
     const H = canvas.height;
 
-    // Main Menu Buttons
     menuButtons.levels = { x: W / 2 - 150, y: H / 2 + 30, width: 140, height: 40, text: 'Levels' };
     menuButtons.infinite = { x: W / 2 + 10, y: H / 2 + 30, width: 140, height: 40, text: 'Infinite' };
-    
-    // Back Button
     menuButtons.back = { x: 20, y: 20, width: 100, height: 30, text: 'Back' };
 
-    // Common Button Layout for Game Over and Level Complete
     const btnWidth = 200;
     const btnHeight = 50;
     const btnY = H / 2 + 20;
     const margin = 20;
-    
-    // Game Over Buttons
+
     menuButtons.gameOverMenu = { x: W / 2 - btnWidth - margin/2, y: btnY, width: btnWidth, height: btnHeight, text: 'Return to Menu' };
     menuButtons.gameOverRetry = { x: W / 2 + margin/2, y: btnY, width: btnWidth, height: btnHeight, text: 'Retry Level' };
-    
-    // Level Complete Buttons
     menuButtons.levelCompleteMenu = { x: W / 2 - btnWidth - margin/2, y: btnY, width: btnWidth, height: btnHeight, text: 'Return to Menu' };
     menuButtons.levelCompleteLevels = { x: W / 2 + margin/2, y: btnY, width: btnWidth, height: btnHeight, text: 'Select Level' };
 
-    // Level Selection Grid (simplified calculation for storing positions)
     const startX = W * 0.1;
     const startY = H * 0.25;
     const btnW = 50;
@@ -110,7 +101,7 @@ function updateMenuButtonPositions() {
     for (let i = 1; i <= 50; i++) {
         const col = (i - 1) % cols;
         const row = Math.floor((i - 1) / cols);
-        
+
         const x = startX + col * (btnW + padding);
         const y = startY + row * (btnH + padding);
 
@@ -118,43 +109,38 @@ function updateMenuButtonPositions() {
     }
 }
 
-
 /**
  * Initializes the game and starts the main loop.
  */
 function init() {
     window.addEventListener('resize', resizeCanvas);
-    resizeCanvas(); // Initial call
-    
+    resizeCanvas();
+
     canvas.addEventListener('mousedown', handleMouseDown);
     document.addEventListener('keydown', handleKeyInput);
-    
-    // Start the game loop only after the image is loaded
     requestAnimationFrame(gameLoop);
 }
 
 playerImg.onload = init;
-
 
 /**
  * The main game loop, runs every frame.
  * @param {number} timestamp - The current time in milliseconds.
  */
 function gameLoop(timestamp) {
-    // Prevent running if image hasn't loaded (redundant due to onload check, but safe)
     if (!playerImg.complete) {
         requestAnimationFrame(gameLoop);
         return;
     }
 
-    const deltaTime = (timestamp - lastTime) / 1000; 
+    const deltaTime = (timestamp - lastTime) / 1000;
     lastTime = timestamp;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Draw the ground (use responsive groundHeight)
+
+    // Draw ground with responsive height
     ctx.fillStyle = '#4f3922';
-    ctx.fillRect(0, canvas.height - groundHeight, canvas.width, groundHeight); 
+    ctx.fillRect(0, canvas.height - groundHeight, canvas.width, groundHeight);
 
     switch (gameState) {
         case 'MENU':
@@ -175,12 +161,10 @@ function gameLoop(timestamp) {
             }
             break;
         case 'GAME_OVER':
-            // Draw last frame of the game before collision
-            drawGame(); 
+            drawGame();
             drawGameOverScreen();
             break;
         case 'LEVEL_COMPLETE':
-            // Draw last frame of the level
             drawGame();
             drawLevelCompleteScreen();
             break;
@@ -191,9 +175,6 @@ function gameLoop(timestamp) {
 
 // --- PLAYER LOGIC ---
 
-/**
- * Resets player position and clears obstacles.
- */
 function resetPlayerAndObstacles() {
     player.x = canvas.width * 0.05;
     player.y = canvas.height - player.height - groundHeight;
@@ -204,29 +185,54 @@ function resetPlayerAndObstacles() {
 
 /**
  * Handles the player's movement and jumping physics.
+ * Includes ceiling clamp and terminal velocity to prevent leaving the screen.
  */
 function updatePlayer() {
-    // Apply gravity
+    // Apply gravity if airborne
     if (!player.isGrounded) {
         player.velocityY += player.gravity;
+        // Clamp to terminal velocity
+        if (player.velocityY > player.terminalVelocity) {
+            player.velocityY = player.terminalVelocity;
+        }
         player.y += player.velocityY;
     }
 
-    // Check for ground collision
+    // Ground collision
     if (player.y + player.height > canvas.height - groundHeight) {
         player.y = canvas.height - groundHeight - player.height;
         player.velocityY = 0;
         player.isGrounded = true;
     }
+
+    // Ceiling clamp: never allow the player's top to go above y = 0
+    if (player.y < 0) {
+        player.y = 0;
+        // If the player hit the ceiling while going up, zero the upward velocity
+        if (player.velocityY < 0) {
+            player.velocityY = 0;
+        }
+    }
 }
 
 /**
  * Makes the player jump if they are grounded.
+ * Small double-check to avoid extremely high jumps if player is nearly at top already.
  */
 function jump() {
     if (player.isGrounded) {
+        // If the player is too high to jump fully, reduce jump strength proportionally
+        const maxAllowedJumpTop = canvas.height * 0.02; // keep at least 2% margin at top
+        const spaceAbove = player.y - maxAllowedJumpTop;
+        let appliedJump = player.jumpStrength;
+
+        if (-player.jumpStrength > spaceAbove) {
+            // Reduce the jump so the player won't instantly overshoot the ceiling
+            appliedJump = -Math.max(10, spaceAbove * 0.9);
+        }
+
         player.isGrounded = false;
-        player.velocityY = player.jumpStrength;
+        player.velocityY = appliedJump;
     }
 }
 
@@ -239,45 +245,34 @@ function drawPlayer() {
 
 // --- OBSTACLE LOGIC ---
 
-/**
- * Generates the set of obstacles for the current level or infinite mode.
- * The difficulty increases based on the level number or current score.
- */
 function generateObstacles(isInfinite) {
     levelObstacles = [];
     let difficultyFactor = 1;
-    let maxDistance = 3000; 
+    let maxDistance = 3000;
 
     if (isInfinite) {
-        // Difficulty increases slightly the further the score is
         difficultyFactor = 1 + Math.floor(score / 500) * 0.2;
-        maxDistance = 1000000; // Essentially infinite
+        maxDistance = 1000000;
     } else {
-        // Difficulty increases based on level number (1-50)
         difficultyFactor = 1 + (currentLevel - 1) * 0.15;
-        maxDistance = 800 + (currentLevel * 100); // Levels have a finite length
+        maxDistance = 800 + (currentLevel * 100);
     }
 
-    let currentX = canvas.width * 0.6; // Start further right
+    let currentX = canvas.width * 0.6;
     let totalLength = 0;
-    
-    // Define obstacle heights relative to the responsive player size (increased)
-    const baseObstacleHeight = player.height * 1.05;    // about same height as player
-    const tallObstacleHeight = player.height * 2.0 + difficultyFactor * 4;  // tall obstacles are approx 2x player
-    const maxObstacleWidth = player.width * 2.4;        // wider obstacles
-    const minGap = Math.max(player.width * 1.6, 40);    // reduce min gap slightly for denser obstacles
 
-    // Generate until the total distance is reached
+    const baseObstacleHeight = player.height * 1.05;
+    const tallObstacleHeight = player.height * 2.0 + difficultyFactor * 4;
+    const maxObstacleWidth = player.width * 2.4;
+    const minGap = Math.max(player.width * 1.6, 40);
+
     while (totalLength < maxDistance) {
-        // Gap between obstacles (gets smaller with difficulty, respects minGap)
-        const gap = Math.max(minGap, 420 - difficultyFactor * 60 + Math.random() * 100); 
+        const gap = Math.max(minGap, 420 - difficultyFactor * 60 + Math.random() * 100);
         currentX += gap;
 
-        // Obstacle width (gets wider with difficulty, max limited by responsive size)
-        const width = Math.min(maxObstacleWidth, baseObstacleHeight * 0.6 + difficultyFactor * 8 + Math.random() * 18); 
-        
-        // Obstacle height (gets taller with difficulty, using responsive sizes)
-        const height = Math.random() < 0.25 ? tallObstacleHeight + difficultyFactor * 6 : baseObstacleHeight; // 25% chance of a tall obstacle
+        const width = Math.min(maxObstacleWidth, baseObstacleHeight * 0.6 + difficultyFactor * 8 + Math.random() * 18);
+
+        const height = Math.random() < 0.25 ? tallObstacleHeight + difficultyFactor * 6 : baseObstacleHeight;
 
         levelObstacles.push({
             x: currentX,
@@ -297,53 +292,44 @@ function generateObstacles(isInfinite) {
 function updateObstacles(deltaTime) {
     const baseSpeed = gameState === 'LEVEL' ? 250 : 300;
     const speedIncrease = gameState === 'INFINITE' ? Math.floor(score / 100) * 5 : 0;
-    const scrollSpeed = baseSpeed + speedIncrease; 
+    const scrollSpeed = baseSpeed + speedIncrease;
     const distanceToScroll = scrollSpeed * deltaTime;
-    
-    // Calculate the player's true collision box coordinates
+
     const pBoxX = player.x + player.width * player.hitboxOffsetX;
     const pBoxY = player.y + player.height * player.hitboxOffsetY;
     const pBoxW = player.width * player.hitboxWidthScale;
     const pBoxH = player.height * player.hitboxHeightScale;
 
-    // Re-introduced signal for safer state transition
-    let levelCompleteSignal = false; 
-
+    let levelCompleteSignal = false;
 
     for (let i = 0; i < levelObstacles.length; i++) {
         const obs = levelObstacles[i];
         obs.x -= distanceToScroll;
 
-        // Check for collision with player (AABB collision using adjusted hitbox)
         if (
             pBoxX < obs.x + obs.width &&
             pBoxX + pBoxW > obs.x &&
             pBoxY < obs.y + obs.height &&
             pBoxY + pBoxH > obs.y
         ) {
-            resetGame(); // Triggers GAME_OVER state
-            return; // Exit updateObstacles immediately on death
+            resetGame();
+            return;
         }
 
-        // Check for level completion (Set signal if last obstacle has passed)
         if (gameState === 'LEVEL' && obs.x < -obs.width && i === levelObstacles.length - 1) {
-            levelCompleteSignal = true; 
+            levelCompleteSignal = true;
         }
     }
-    
-    // Handle the state transition AFTER the loop has completed
+
     if (levelCompleteSignal) {
-        gameState = 'LEVEL_COMPLETE'; 
+        gameState = 'LEVEL_COMPLETE';
         resetPlayerAndObstacles();
         currentLevel++;
     }
 }
 
-/**
- * Draws all active obstacles.
- */
 function drawObstacles() {
-    ctx.fillStyle = '#ff0000'; // Red
+    ctx.fillStyle = '#ff0000';
     levelObstacles.forEach(obs => {
         ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
     });
@@ -351,25 +337,18 @@ function drawObstacles() {
 
 // --- GAME STATE AND RENDER ---
 
-/**
- * Runs the physics and logic updates for the active game state.
- */
 function updateGame(deltaTime) {
     updatePlayer();
     updateObstacles(deltaTime);
 }
 
-/**
- * Draws all game elements for the active game state.
- */
 function drawGame() {
     drawPlayer();
     drawObstacles();
-    
-    // --- TEMPORARY DEBUG DRAWING ---
-    // Uncomment this section to see the actual hitbox being used for collision
+
+    // Debug hitbox (uncomment if needed)
     /*
-    ctx.strokeStyle = '#00FFFF'; // Cyan color for visibility
+    ctx.strokeStyle = '#00FFFF';
     ctx.lineWidth = 2;
     ctx.strokeRect(
         player.x + player.width * player.hitboxOffsetX,
@@ -380,87 +359,59 @@ function drawGame() {
     */
 }
 
-/**
- * Initiates the GAME OVER state when a collision occurs.
- */
 function resetGame() {
-    previousGameState = gameState; // Store current game mode (LEVEL or INFINITE)
-    
-    // Reset player physics variables for the next run (even if on game over screen)
+    previousGameState = gameState;
     player.velocityY = 0;
     player.isGrounded = true;
-
     gameState = 'GAME_OVER';
 }
 
 // --- UI RENDERING ---
 
-/**
- * Helper function to draw a standardized menu button.
- */
 function drawButton(button) {
-    // Background
-    ctx.fillStyle = '#4CAF50'; 
+    ctx.fillStyle = '#4CAF50';
     ctx.fillRect(button.x, button.y, button.width, button.height);
 
-    // Text
     ctx.fillStyle = '#fff';
     ctx.font = '20px Arial';
     ctx.textAlign = 'center';
     ctx.fillText(button.text, button.x + button.width / 2, button.y + button.height / 2 + 7);
 }
 
-
-/**
- * Draws the main title menu.
- */
 function drawMenu() {
     ctx.textAlign = 'center';
     ctx.fillStyle = '#000';
-    
-    // Title
+
     ctx.font = `${canvas.height * 0.12}px Arial`;
     ctx.fillText(GAME_TITLE, canvas.width / 2, canvas.height / 2 - 50);
 
-    // Buttons
     drawButton(menuButtons.levels);
     drawButton(menuButtons.infinite);
 }
 
-/**
- * Draws the level selection screen.
- */
 function drawLevelSelect() {
     ctx.textAlign = 'center';
     ctx.fillStyle = '#000';
-    
-    // Title
+
     ctx.font = '30px Arial';
     ctx.fillText('Select a Level', canvas.width / 2, 80);
 
-    // Back Button
     drawButton(menuButtons.back);
 
-    // Level buttons grid (10 rows, 5 columns)
     ctx.font = '16px Arial';
 
     for (let i = 1; i <= 50; i++) {
         const btn = menuButtons['level_' + i];
-        
-        // Color based on (mock) progress
-        ctx.fillStyle = i <= currentLevel ? '#4CAF50' : '#888'; 
+
+        ctx.fillStyle = i <= currentLevel ? '#4CAF50' : '#888';
         ctx.fillRect(btn.x, btn.y, btn.width, btn.height);
-        
-        // Draw button text
+
         ctx.fillStyle = '#fff';
         ctx.textAlign = 'center';
         ctx.fillText(i.toString(), btn.x + btn.width / 2, btn.y + btn.height / 2 + 5);
     }
 }
 
-/**
- * Displays the current level number on the game screen.
- */
 function drawLevelIndicator() {
     ctx.fillStyle = '#000';
     ctx.font = '20px Arial';
@@ -468,17 +419,11 @@ function drawLevelIndicator() {
     ctx.fillText(`Level: ${currentLevel}`, 10, 30);
 }
 
-/**
- * Updates the score based on distance traveled and draws it.
- */
 function updateScore(deltaTime) {
-    const speed = 250; // Points per second
+    const speed = 250;
     score += speed * deltaTime;
 }
 
-/**
- * Draws the current score in the top right.
- */
 function drawScore() {
     ctx.fillStyle = '#000';
     ctx.font = '20px Arial';
@@ -486,63 +431,46 @@ function drawScore() {
     ctx.fillText(`Score: ${score.toFixed(0)}`, canvas.width - 10, 30);
 }
 
-/**
- * Draws the Game Over overlay and buttons.
- */
 function drawGameOverScreen() {
-    // Dark, transparent overlay
     ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     ctx.textAlign = 'center';
     ctx.fillStyle = '#fff';
 
-    // Title
     ctx.font = '40px Arial';
     ctx.fillText('CRASHED!', canvas.width / 2, canvas.height / 2 - 80);
 
-    // Score/Level Display
     ctx.font = '24px Arial';
     if (previousGameState === 'INFINITE') {
         ctx.fillText(`Final Score: ${score.toFixed(0)}`, canvas.width / 2, canvas.height / 2 - 30);
     } else {
         ctx.fillText(`Level ${currentLevel} Failed`, canvas.width / 2, canvas.height / 2 - 30);
     }
-    
-    // Draw Buttons
+
     drawButton(menuButtons.gameOverMenu);
     drawButton(menuButtons.gameOverRetry);
 }
 
-/**
- * Draws the Level Complete overlay and buttons.
- */
 function drawLevelCompleteScreen() {
-    // Light, transparent overlay
     ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     ctx.textAlign = 'center';
     ctx.fillStyle = '#fff';
 
-    // Title
     ctx.font = '40px Arial';
     ctx.fillText('LEVEL COMPLETE!', canvas.width / 2, canvas.height / 2 - 80);
 
-    // Level Display
     ctx.font = '24px Arial';
-    ctx.fillText(`You Cleared Level ${currentLevel - 1}!`, canvas.width / 2, canvas.height / 2 - 30); // currentLevel was already incremented
+    ctx.fillText(`You Cleared Level ${currentLevel - 1}!`, canvas.width / 2, canvas.height / 2 - 30);
 
-    // Draw Buttons
     drawButton(menuButtons.levelCompleteMenu);
     drawButton(menuButtons.levelCompleteLevels);
 }
 
 // --- INPUT HANDLERS ---
 
-/**
- * Handles mouse clicks for menu navigation.
- */
 function handleMouseDown(event) {
     const rect = canvas.getBoundingClientRect();
     const mouseX = event.clientX - rect.left;
@@ -561,7 +489,6 @@ function handleMouseDown(event) {
         if (isButtonClicked(menuButtons.back, mouseX, mouseY)) {
             gameState = 'MENU';
         } else {
-            // Check for level buttons
             for (let i = 1; i <= 50; i++) {
                 const btn = menuButtons['level_' + i];
                 if (isButtonClicked(btn, mouseX, mouseY)) {
@@ -575,40 +502,31 @@ function handleMouseDown(event) {
         }
     } else if (gameState === 'GAME_OVER') {
         if (isButtonClicked(menuButtons.gameOverMenu, mouseX, mouseY)) {
-            // Reset everything and go to menu
             resetPlayerAndObstacles();
             score = 0;
             gameState = 'MENU';
         } else if (isButtonClicked(menuButtons.gameOverRetry, mouseX, mouseY)) {
-            // Retry the previous mode
             resetPlayerAndObstacles();
             if (previousGameState === 'INFINITE') {
                 score = 0;
                 generateObstacles(true);
                 gameState = 'INFINITE';
             } else if (previousGameState === 'LEVEL') {
-                // currentLevel remains the same
                 generateObstacles(false);
                 gameState = 'LEVEL';
             }
         }
-    } else if (gameState === 'LEVEL_COMPLETE') { 
+    } else if (gameState === 'LEVEL_COMPLETE') {
         if (isButtonClicked(menuButtons.levelCompleteMenu, mouseX, mouseY)) {
-            // Go to main menu
             gameState = 'MENU';
             score = 0;
         } else if (isButtonClicked(menuButtons.levelCompleteLevels, mouseX, mouseY)) {
-            // Go to level select screen
             gameState = 'LEVEL_SELECT';
         }
     }
 }
 
-/**
- * Checks if the mouse click is within a button's bounds.
- */
 function isButtonClicked(button, mouseX, mouseY) {
-    // Only check if button exists and has coordinates
     if (!button) return false;
 
     return mouseX >= button.x &&
@@ -617,13 +535,8 @@ function isButtonClicked(button, mouseX, mouseY) {
            mouseY <= button.y + button.height;
 }
 
-/**
- * Handles keyboard input for jumping.
- */
 function handleKeyInput(event) {
-    // Allow jumping only in active game modes
     if ((gameState === 'LEVEL' || gameState === 'INFINITE') && (event.code === 'Space' || event.code === 'ArrowUp')) {
         jump();
     }
 }
-
