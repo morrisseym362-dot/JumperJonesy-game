@@ -5,7 +5,7 @@ const ctx = canvas.getContext('2d');
 const GAME_TITLE = 'JumperJonesy';
 
 // --- GAME STATE VARIABLES ---
-// Possible states: 'MENU', 'LEVEL_SELECT', 'LEVEL', 'INFINITE', 'GAME_OVER'
+// Possible states: 'MENU', 'LEVEL_SELECT', 'LEVEL', 'INFINITE', 'GAME_OVER', 'LEVEL_COMPLETE'
 let gameState = 'MENU'; 
 let previousGameState = 'INFINITE'; // Stores state before game over (to know what to retry)
 let currentLevel = 1;
@@ -64,14 +64,19 @@ function updateMenuButtonPositions() {
     // Back Button
     menuButtons.back = { x: 20, y: 20, width: 100, height: 30, text: 'Back' };
 
-    // Game Over Buttons (used in GAME_OVER state)
+    // Common Button Layout for Game Over and Level Complete
     const btnWidth = 200;
     const btnHeight = 50;
     const btnY = H / 2 + 20;
     const margin = 20;
     
+    // Game Over Buttons (used in GAME_OVER state)
     menuButtons.gameOverMenu = { x: W / 2 - btnWidth - margin/2, y: btnY, width: btnWidth, height: btnHeight, text: 'Return to Menu' };
     menuButtons.gameOverRetry = { x: W / 2 + margin/2, y: btnY, width: btnWidth, height: btnHeight, text: 'Retry Level' };
+    
+    // NEW: Level Complete Buttons (used in LEVEL_COMPLETE state)
+    menuButtons.levelCompleteMenu = { x: W / 2 - btnWidth - margin/2, y: btnY, width: btnWidth, height: btnHeight, text: 'Return to Menu' };
+    menuButtons.levelCompleteLevels = { x: W / 2 + margin/2, y: btnY, width: btnWidth, height: btnHeight, text: 'Select Level' };
     
     // Level Selection Grid (simplified calculation for storing positions)
     const startX = W * 0.1;
@@ -152,6 +157,11 @@ function gameLoop(timestamp) {
             // Draw last frame of the game before collision
             drawGame(); 
             drawGameOverScreen();
+            break;
+        case 'LEVEL_COMPLETE':
+            // Draw last frame of the level
+            drawGame();
+            drawLevelCompleteScreen();
             break;
     }
 
@@ -283,8 +293,12 @@ function updateObstacles(deltaTime) {
         // Check for level completion (simple implementation for demonstration)
         if (gameState === 'LEVEL' && obs.x < -obs.width && i === levelObstacles.length - 1) {
             // Level cleared!
-            currentLevel++;
-            gameState = 'MENU'; // Or transition to next level
+            
+            // NEW: Transition to LEVEL_COMPLETE screen
+            gameState = 'LEVEL_COMPLETE'; 
+            resetPlayerAndObstacles(); // Stop player movement and clear obstacles for the next run
+            currentLevel++; // Increment level for next attempt
+            return;
         }
     }
 }
@@ -451,6 +465,30 @@ function drawGameOverScreen() {
     drawButton(menuButtons.gameOverRetry);
 }
 
+/**
+ * NEW: Draws the Level Complete overlay and buttons.
+ */
+function drawLevelCompleteScreen() {
+    // Light, transparent overlay
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#fff';
+
+    // Title
+    ctx.font = '40px Arial';
+    ctx.fillText('LEVEL COMPLETE!', canvas.width / 2, canvas.height / 2 - 80);
+
+    // Level Display
+    ctx.font = '24px Arial';
+    ctx.fillText(`You Cleared Level ${currentLevel - 1}!`, canvas.width / 2, canvas.height / 2 - 30); // currentLevel was already incremented
+
+    // Draw Buttons
+    drawButton(menuButtons.levelCompleteMenu);
+    drawButton(menuButtons.levelCompleteLevels);
+}
+
 
 // --- INPUT HANDLERS ---
 
@@ -505,6 +543,15 @@ function handleMouseDown(event) {
                 generateObstacles(false);
                 gameState = 'LEVEL';
             }
+        }
+    } else if (gameState === 'LEVEL_COMPLETE') { // NEW: Handle Level Complete screen clicks
+        if (isButtonClicked(menuButtons.levelCompleteMenu, mouseX, mouseY)) {
+            // Go to main menu
+            gameState = 'MENU';
+            score = 0;
+        } else if (isButtonClicked(menuButtons.levelCompleteLevels, mouseX, mouseY)) {
+            // Go to level select screen
+            gameState = 'LEVEL_SELECT';
         }
     }
 }
