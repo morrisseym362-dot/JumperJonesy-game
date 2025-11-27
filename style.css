@@ -1,29 +1,28 @@
 html, body {
-    height: 100%; /* Ensures full height */
+    height: 100%; /* Explicitly use 100% of parent container (html for body) */
+    width: 100%; /* Explicitly use 100% of parent container */
+    margin: 0; /* Remove default browser margin */
+    padding: 0; /* Remove default browser padding */
+    overflow: hidden; /* Prevents scrollbars from appearing if the canvas slightly overruns */
 }
 
 body {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    margin: 0;
+    /* Removed centering styles (display: flex, etc.) as the container now fills the screen */
     background-color: #333; /* Dark background */
     font-family: 'Inter', Arial, sans-serif;
     color: #fff;
 }
 
 #game-container {
-    /* Updated to take full width and height of the body */
-    width: 100%; 
-    height: 100%;
+    /* Set dimensions explicitly to 100% of the viewport */
+    width: 100vw; 
+    height: 100vh;
     
-    /* Removed max-width, width: 90vw, and aspect-ratio */
-    
-    border: none; /* Removed border to blend with the window */
-    border-radius: 0; /* Removed border radius */
+    /* Removed all aesthetic constraints from the original file */
+    border: none; 
+    border-radius: 0;
     overflow: hidden;
-    box-shadow: none; /* Removed box shadow */
+    box-shadow: none; 
 }
 
 #gameCanvas {
