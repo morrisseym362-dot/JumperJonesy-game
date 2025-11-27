@@ -25,9 +25,9 @@ const player = {
     width: 0, // Set dynamically in resizeCanvas()
     height: 0, // Set dynamically in resizeCanvas()
     velocityY: 0,
-    // EDITED: Increased gravity to balance the increased jump strength (to keep jumps fast and snappy)
+    // EDITED: Increased gravity for snappier fall after jump
     gravity: 2.2,
-    // EDITED: Increased jump strength significantly to clear obstacles relative to new, larger sprite size
+    // EDITED: Increased jump strength to clear larger obstacles
     jumpStrength: -45, 
     isGrounded: true,
     
@@ -41,7 +41,7 @@ const player = {
 // Define menu buttons, positions are dynamically calculated in updateMenuButtonPositions()
 const menuButtons = {};
 
-// EDITED: Global variable for ground height to be used in multiple functions
+// EDITED: Global constant for ground height
 const GROUND_HEIGHT = 20;
 
 // --- GAME FUNCTIONS ---
@@ -54,7 +54,7 @@ function resizeCanvas() {
     canvas.width = canvas.offsetWidth;
     canvas.height = canvas.offsetHeight;
     
-    // EDITED: Set player size relative to canvas height (e.g., increased from 0.08 to 0.12 of height)
+    // EDITED: Increased player size relative to canvas height (from 0.08 to 0.12)
     player.height = canvas.height * 0.12; 
     player.width = player.height; // Keep it square
 
@@ -257,7 +257,7 @@ function generateObstacles(isInfinite) {
     let currentX = canvas.width * 0.6; // Start further right
     let totalLength = 0;
     
-    // Define obstacle heights relative to the responsive player size (these scale automatically with player.height)
+    // Define obstacle heights relative to the responsive player size
     const baseObstacleHeight = player.height * 0.75; 
     const tallObstacleHeight = player.height * 1.5;  
     const maxObstacleWidth = player.width * 1.5;     
@@ -292,6 +292,7 @@ function generateObstacles(isInfinite) {
  * Updates obstacle positions and checks for collision.
  */
 function updateObstacles(deltaTime) {
+    // EDITED: Decreased base speed for smoother flow (from 250/300 to 200/250)
     const baseSpeed = gameState === 'LEVEL' ? 200 : 250;
     const speedIncrease = gameState === 'INFINITE' ? Math.floor(score / 100) * 5 : 0;
     const scrollSpeed = baseSpeed + speedIncrease; 
