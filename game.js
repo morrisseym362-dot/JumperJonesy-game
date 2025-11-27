@@ -29,7 +29,7 @@ const player = {
     jumpStrength: -28, 
     isGrounded: true,
     
-    // NEW: Hitbox Adjustments to fit the visual sprite better
+    // Hitbox Adjustments to fit the visual sprite better
     hitboxOffsetX: 0.1,      // Start hitbox 10% from the left of the sprite
     hitboxOffsetY: 0.2,      // Start hitbox 20% from the top of the sprite
     hitboxWidthScale: 0.8,   // Hitbox is 80% of the sprite width
@@ -289,9 +289,7 @@ function updateObstacles(deltaTime) {
     const scrollSpeed = baseSpeed + speedIncrease; 
     const distanceToScroll = scrollSpeed * deltaTime;
     
-    let levelCompleteSignal = false;
-    
-    // NEW: Calculate the player's true collision box coordinates
+    // Calculate the player's true collision box coordinates
     const pBoxX = player.x + player.width * player.hitboxOffsetX;
     const pBoxY = player.y + player.height * player.hitboxOffsetY;
     const pBoxW = player.width * player.hitboxWidthScale;
@@ -310,21 +308,19 @@ function updateObstacles(deltaTime) {
             pBoxY + pBoxH > obs.y
         ) {
             resetGame(); // Triggers GAME_OVER state
-            return;
+            return; // Exit updateObstacles immediately on death
         }
 
-        // Check for level completion
+        // FIX: Check for level completion and transition immediately
         if (gameState === 'LEVEL' && obs.x < -obs.width && i === levelObstacles.length - 1) {
-            levelCompleteSignal = true; 
+            gameState = 'LEVEL_COMPLETE'; 
+            resetPlayerAndObstacles();
+            currentLevel++;
+            return; // Exit updateObstacles immediately on level completion
         }
     }
     
-    // Handle the state transition AFTER the loop has completed
-    if (levelCompleteSignal) {
-        gameState = 'LEVEL_COMPLETE'; 
-        resetPlayerAndObstacles();
-        currentLevel++;
-    }
+    // Removed the previous levelCompleteSignal logic here
 }
 
 /**
