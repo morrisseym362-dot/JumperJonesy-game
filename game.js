@@ -13,6 +13,9 @@ let score = 0;
 let lastTime = 0;
 let levelObstacles = [];
 
+// Ground height (responsive) -- will be set in resizeCanvas()
+let groundHeight = 10;
+
 // --- PLAYER SPRITE SETUP ---
 const playerImg = new Image();
 // IMPORTANT: Link to your uploaded image file
@@ -30,10 +33,10 @@ const player = {
     isGrounded: true,
     
     // Hitbox Adjustments to fit the visual sprite better
-    hitboxOffsetX: 0.1,      // Start hitbox 10% from the left of the sprite
-    hitboxOffsetY: 0.2,      // Start hitbox 20% from the top of the sprite
-    hitboxWidthScale: 0.8,   // Hitbox is 80% of the sprite width
-    hitboxHeightScale: 0.7   // Hitbox is 70% of the sprite height
+    hitboxOffsetX: 0.12,      // Start hitbox ~12% from the left of the sprite
+    hitboxOffsetY: 0.18,      // Start hitbox ~18% from the top of the sprite
+    hitboxWidthScale: 0.76,   // Hitbox is 76% of the sprite width
+    hitboxHeightScale: 0.68   // Hitbox is 68% of the sprite height
 };
 
 // Define menu buttons, positions are dynamically calculated in updateMenuButtonPositions()
@@ -49,13 +52,21 @@ function resizeCanvas() {
     canvas.width = canvas.offsetWidth;
     canvas.height = canvas.offsetHeight;
     
-    // Set player size relative to canvas height (e.g., 8% of height)
-    player.height = canvas.height * 0.08; 
+    // Compute a responsive ground height (bigger on larger screens, but not tiny)
+    groundHeight = Math.max(18, canvas.height * 0.06); // at least 18px, otherwise 6% of height
+
+    // Set player size relative to canvas height (use more of the vertical space)
+    // Increased from 8% to ~15% to make the sprite much larger on-screen
+    player.height = canvas.height * 0.15; 
     player.width = player.height; // Keep it square
 
-    // Update player position based on new canvas size
+    // Recompute physics so jump and gravity scale comfortably with sprite size
+    player.jumpStrength = -Math.max(18, player.height * 1.8); // negative value
+    player.gravity = Math.max(0.9, player.height * 0.08);
+
+    // Update player position based on new canvas size (place it standing on the ground)
     player.x = canvas.width * 0.05; // 5% from left
-    player.y = canvas.height - player.height - 10; // 10px from bottom edge
+    player.y = canvas.height - player.height - groundHeight; 
     
     updateMenuButtonPositions();
 }
@@ -141,9 +152,9 @@ function gameLoop(timestamp) {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Draw the ground
+    // Draw the ground (use responsive groundHeight)
     ctx.fillStyle = '#4f3922';
-    ctx.fillRect(0, canvas.height - 10, canvas.width, 10); 
+    ctx.fillRect(0, canvas.height - groundHeight, canvas.width, groundHeight); 
 
     switch (gameState) {
         case 'MENU':
@@ -185,7 +196,7 @@ function gameLoop(timestamp) {
  */
 function resetPlayerAndObstacles() {
     player.x = canvas.width * 0.05;
-    player.y = canvas.height - player.height - 10;
+    player.y = canvas.height - player.height - groundHeight;
     player.velocityY = 0;
     player.isGrounded = true;
     levelObstacles = [];
@@ -202,8 +213,8 @@ function updatePlayer() {
     }
 
     // Check for ground collision
-    if (player.y + player.height > canvas.height - 10) {
-        player.y = canvas.height - 10 - player.height;
+    if (player.y + player.height > canvas.height - groundHeight) {
+        player.y = canvas.height - groundHeight - player.height;
         player.velocityY = 0;
         player.isGrounded = true;
     }
@@ -250,27 +261,27 @@ function generateObstacles(isInfinite) {
     let currentX = canvas.width * 0.6; // Start further right
     let totalLength = 0;
     
-    // Define obstacle heights relative to the responsive player size
-    const baseObstacleHeight = player.height * 0.75; 
-    const tallObstacleHeight = player.height * 1.5;  
-    const maxObstacleWidth = player.width * 1.5;     
-    const minGap = player.width * 3;                 
+    // Define obstacle heights relative to the responsive player size (increased)
+    const baseObstacleHeight = player.height * 1.05;    // about same height as player
+    const tallObstacleHeight = player.height * 2.0 + difficultyFactor * 4;  // tall obstacles are approx 2x player
+    const maxObstacleWidth = player.width * 2.4;        // wider obstacles
+    const minGap = Math.max(player.width * 1.6, 40);    // reduce min gap slightly for denser obstacles
 
     // Generate until the total distance is reached
     while (totalLength < maxDistance) {
         // Gap between obstacles (gets smaller with difficulty, respects minGap)
-        const gap = Math.max(minGap, 400 - difficultyFactor * 50 + Math.random() * 80); 
+        const gap = Math.max(minGap, 420 - difficultyFactor * 60 + Math.random() * 100); 
         currentX += gap;
 
         // Obstacle width (gets wider with difficulty, max limited by responsive size)
-        const width = Math.min(maxObstacleWidth, baseObstacleHeight / 2 + difficultyFactor * 5 + Math.random() * 10); 
+        const width = Math.min(maxObstacleWidth, baseObstacleHeight * 0.6 + difficultyFactor * 8 + Math.random() * 18); 
         
         // Obstacle height (gets taller with difficulty, using responsive sizes)
-        const height = Math.random() < 0.2 ? tallObstacleHeight + difficultyFactor * 5 : baseObstacleHeight; // 20% chance of a tall obstacle
+        const height = Math.random() < 0.25 ? tallObstacleHeight + difficultyFactor * 6 : baseObstacleHeight; // 25% chance of a tall obstacle
 
         levelObstacles.push({
             x: currentX,
-            y: canvas.height - 10 - height,
+            y: canvas.height - groundHeight - height,
             width: width,
             height: height
         });
@@ -295,7 +306,7 @@ function updateObstacles(deltaTime) {
     const pBoxW = player.width * player.hitboxWidthScale;
     const pBoxH = player.height * player.hitboxHeightScale;
 
-    // FIX: Re-introduced signal for safer state transition
+    // Re-introduced signal for safer state transition
     let levelCompleteSignal = false; 
 
 
@@ -320,7 +331,7 @@ function updateObstacles(deltaTime) {
         }
     }
     
-    // FIX: Handle the state transition AFTER the loop has completed
+    // Handle the state transition AFTER the loop has completed
     if (levelCompleteSignal) {
         gameState = 'LEVEL_COMPLETE'; 
         resetPlayerAndObstacles();
@@ -408,7 +419,7 @@ function drawMenu() {
     ctx.fillStyle = '#000';
     
     // Title
-    ctx.font = `${canvas.height * 0.15}px Arial`;
+    ctx.font = `${canvas.height * 0.12}px Arial`;
     ctx.fillText(GAME_TITLE, canvas.width / 2, canvas.height / 2 - 50);
 
     // Buttons
