@@ -1,3 +1,7 @@
+html, body {
+    height: 100%; /* Ensures full height */
+}
+
 body {
     display: flex;
     justify-content: center;
@@ -10,14 +14,16 @@ body {
 }
 
 #game-container {
-    /* Limit the maximum size for very large screens */
-    max-width: 800px; 
-    width: 90vw; /* Take 90% of the viewport width */
-    aspect-ratio: 2 / 1; /* Maintain 2:1 ratio (like 800x400) */
-    border: 5px solid #000;
-    border-radius: 8px;
+    /* Updated to take full width and height of the body */
+    width: 100%; 
+    height: 100%;
+    
+    /* Removed max-width, width: 90vw, and aspect-ratio */
+    
+    border: none; /* Removed border to blend with the window */
+    border-radius: 0; /* Removed border radius */
     overflow: hidden;
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.6);
+    box-shadow: none; /* Removed box shadow */
 }
 
 #gameCanvas {
