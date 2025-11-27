@@ -25,9 +25,9 @@ const player = {
     width: 0, // Set dynamically in resizeCanvas()
     height: 0, // Set dynamically in resizeCanvas()
     velocityY: 0,
-    // EDITED: Increased gravity for snappier fall after jump
+    // EDITED: Increased gravity for snappier fall after jump to compensate for higher jump (was 1.5)
     gravity: 2.2,
-    // EDITED: Increased jump strength to clear larger obstacles
+    // EDITED: Increased jump strength to clear larger obstacles (was -28)
     jumpStrength: -45, 
     isGrounded: true,
     
@@ -41,7 +41,7 @@ const player = {
 // Define menu buttons, positions are dynamically calculated in updateMenuButtonPositions()
 const menuButtons = {};
 
-// EDITED: Global constant for ground height
+// EDITED: Global constant for ground height (was 10)
 const GROUND_HEIGHT = 20;
 
 // --- GAME FUNCTIONS ---
@@ -257,7 +257,7 @@ function generateObstacles(isInfinite) {
     let currentX = canvas.width * 0.6; // Start further right
     let totalLength = 0;
     
-    // Define obstacle heights relative to the responsive player size
+    // Define obstacle heights relative to the responsive player size (these scale automatically)
     const baseObstacleHeight = player.height * 0.75; 
     const tallObstacleHeight = player.height * 1.5;  
     const maxObstacleWidth = player.width * 1.5;     
@@ -292,7 +292,7 @@ function generateObstacles(isInfinite) {
  * Updates obstacle positions and checks for collision.
  */
 function updateObstacles(deltaTime) {
-    // EDITED: Decreased base speed for smoother flow (from 250/300 to 200/250)
+    // EDITED: Decreased base speed for smoother flow (was 250/300)
     const baseSpeed = gameState === 'LEVEL' ? 200 : 250;
     const speedIncrease = gameState === 'INFINITE' ? Math.floor(score / 100) * 5 : 0;
     const scrollSpeed = baseSpeed + speedIncrease; 
