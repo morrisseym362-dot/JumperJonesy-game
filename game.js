@@ -22,11 +22,12 @@ playerImg.src = 'Mr Jones.png';
 const player = {
     x: 0, 
     y: 0,
-    width: 40,
-    height: 40,
+    width: 0, // Set dynamically
+    height: 0, // Set dynamically
     velocityY: 0,
-    gravity: 0.8,
-    jumpStrength: -16,
+    // NEW: Adjusted gravity and jump for larger, responsive sizes
+    gravity: 1.5,
+    jumpStrength: -28, 
     isGrounded: true
 };
 
@@ -43,6 +44,10 @@ function resizeCanvas() {
     canvas.width = canvas.offsetWidth;
     canvas.height = canvas.offsetHeight;
     
+    // NEW: Set player size relative to canvas height (e.g., 8% of height)
+    player.height = canvas.height * 0.08; 
+    player.width = player.height; // Keep it square
+
     // Update player position based on new canvas size
     player.x = canvas.width * 0.05; // 5% from left
     player.y = canvas.height - player.height - 10; // 10px from bottom edge
@@ -213,8 +218,6 @@ function jump() {
  * Draws the player sprite.
  */
 function drawPlayer() {
-    // The player's size needs to be somewhat responsive too, 
-    // but for simplicity, we'll keep the fixed 40x40 size for now.
     ctx.drawImage(playerImg, player.x, player.y, player.width, player.height);
 }
 
@@ -242,17 +245,22 @@ function generateObstacles(isInfinite) {
     let currentX = canvas.width * 0.6; // Start further right
     let totalLength = 0;
     
+    // NEW: Define obstacle heights relative to the responsive player size
+    const baseObstacleHeight = player.height * 0.75; 
+    const tallObstacleHeight = player.height * 1.5; 
+    const maxObstacleWidth = player.width * 1.5;
+
     // Generate until the total distance is reached
     while (totalLength < maxDistance) {
         // Gap between obstacles (gets smaller with difficulty)
-        const gap = Math.max(150, 400 - difficultyFactor * 50 + Math.random() * 80); 
+        const gap = Math.max(player.width * 3, 400 - difficultyFactor * 50 + Math.random() * 80); 
         currentX += gap;
 
-        // Obstacle width (gets wider with difficulty)
-        const width = Math.min(60, 20 + difficultyFactor * 5 + Math.random() * 10); 
+        // Obstacle width (gets wider with difficulty, max limited by responsive size)
+        const width = Math.min(maxObstacleWidth, baseObstacleHeight / 2 + difficultyFactor * 5 + Math.random() * 10); 
         
-        // Obstacle height (gets taller with difficulty)
-        const height = Math.random() < 0.2 ? 60 + difficultyFactor * 5 : 30; // 20% chance of a tall obstacle
+        // Obstacle height (gets taller with difficulty, using responsive sizes)
+        const height = Math.random() < 0.2 ? tallObstacleHeight + difficultyFactor * 5 : baseObstacleHeight; // 20% chance of a tall obstacle
 
         levelObstacles.push({
             x: currentX,
@@ -275,7 +283,7 @@ function updateObstacles(deltaTime) {
     const scrollSpeed = baseSpeed + speedIncrease; 
     const distanceToScroll = scrollSpeed * deltaTime;
 
-    let levelCompleteSignal = false; // NEW: Flag to signal completion after the loop
+    let levelCompleteSignal = false;
 
     for (let i = 0; i < levelObstacles.length; i++) {
         const obs = levelObstacles[i];
@@ -295,13 +303,13 @@ function updateObstacles(deltaTime) {
         // Check for level completion
         if (gameState === 'LEVEL' && obs.x < -obs.width && i === levelObstacles.length - 1) {
             // Level cleared! Set the flag, but don't exit the function yet.
-            levelCompleteSignal = true; // <-- CHANGED
+            levelCompleteSignal = true; 
         }
     }
     
-    // NEW: Handle the state transition AFTER the loop has completed
+    // Handle the state transition AFTER the loop has completed
     if (levelCompleteSignal) {
-        console.log("Level Cleared! Transitioning to LEVEL_COMPLETE");
+        // console.log("Level Cleared! Transitioning to LEVEL_COMPLETE"); // Debug line removed
         gameState = 'LEVEL_COMPLETE'; 
         resetPlayerAndObstacles();
         currentLevel++;
