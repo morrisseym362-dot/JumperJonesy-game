@@ -61,9 +61,9 @@ function resizeCanvas() {
     player.width = player.height; // Keep it square
 
     // Recompute physics so jump and gravity scale comfortably with sprite size
-    player.jumpStrength = -Math.max(18, player.height * 1.8); // negative value
-    player.gravity = Math.max(0.9, player.height * 0.08);
-
+    player.jumpStrength = -player.height * 1.1;
+    player.gravity = player.height * 0.065;
+    
     // Update player position based on new canvas size (place it standing on the ground)
     player.x = canvas.width * 0.05; // 5% from left
     player.y = canvas.height - player.height - groundHeight; 
@@ -626,3 +626,4 @@ function handleKeyInput(event) {
         jump();
     }
 }
+
